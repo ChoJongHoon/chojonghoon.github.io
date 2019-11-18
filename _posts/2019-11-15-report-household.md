@@ -144,9 +144,9 @@ sort 기능이 추가되어야하므로 데이터의 순서는 무작위로 섞�
 
 ![components](/assets/images/report-household-components.png)
 
-1. **Household(빨간색) :** 가계부 테이블을 감싸줍니다.
-2. **Daily(주황색) :** 하루의 가계부를 보여줍니다.
-3. **Expense(보라색) :** 하나의 지출을 보여줍니다.
+1. **<span style="color: #FF0000">Household(빨간색)</span> :** 가계부 테이블을 감싸줍니다.
+2. **<span style="color: #FFC000">Daily(주황색)</span> :** 하루의 가계부를 보여줍니다.
+3. **<span style="color: #70309F">Expense(보라색)</span> :** 하나의 지출을 보여줍니다.
 
 일단은 이렇게 세개의 컴포넌트만 있으면 될거같다. `추가`, `삭제` 기능은 먼저 기본 기능을 다 구현 후 추가해주도록 하자.
 
