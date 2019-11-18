@@ -202,15 +202,11 @@ export default function Household({ children }: HouseholdProps) {
   return (
     <Wrapper>
       <caption>가계부</caption>
-      <tbody>{children}</tbody>
+      {children}
     </Wrapper>
   );
 }
 ```
-
-![tbody](https://i.stack.imgur.com/eLZvt.png)
-
-`table` 태그를 보다 의미에 맞는 시멘틱 마크 업을 하기 위해 `tbody`를 꼭 써준다. (~~처음에 안써주었더니 `warnning` 뿜뿜하더라~~)
 
 ## Daily 컴포넌트 작성
 
@@ -223,9 +219,9 @@ export default function Household({ children }: HouseholdProps) {
 2. **formatMoney :** 금액은 천원단위로 쉼표를 찍어주는 함수
    > ex) `2000000` -> `2,000,000`
 
-**src/lib/formatDate.tsx**
+**src/lib/formatDate.ts**
 
-```tsx
+```ts
 const formatDate = (date: string) => {
   const year = date.substr(0, 4);
   const month = date.substr(4, 2);
@@ -236,9 +232,9 @@ const formatDate = (date: string) => {
 export default formatDate;
 ```
 
-**src/lib/formatMoney.tsx**
+**src/lib/formatMoney.ts**
 
-```tsx
+```ts
 const formatMoney = (money: number) =>
   money.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -288,7 +284,7 @@ export default function Daily({
   children
 }: DailyProps) {
   return (
-    <>
+    <tbody>
       <tr>
         <IndexTd rowSpan={children.length + 5}>{index}</IndexTd>
         <GreenTd align="center">날짜:{formatDate(date)}</GreenTd>
@@ -322,7 +318,94 @@ export default function Daily({
           {formatMoney(income - total)}
         </LimeTd>
       </tr>
-    </>
+    </tbody>
+  );
+}
+```
+
+![tbody](https://i.stack.imgur.com/eLZvt.png)
+
+`table` 태그를 보다 의미에 맞는 시멘틱 마크 업을 하기 위해 `tbody`를 꼭 써준다. (~~처음에 안써주었더니 `warnning` 뿜뿜하더라~~)
+
+## Expense 컴포넌트 작성
+
+`Expense` 컴포넌트는 하나의 지출(row)을 보여준다.
+
+하나의 함수가 더 필요하다.
+
+1. **formatRoman :** 숫자를 로마숫자로 바꿔준다.
+   > ex) `4` -> `IV`
+
+**src/lib/formatRoman.ts**
+
+```tsx
+const formatRoman = (num: number): string => {
+  let roman = "";
+  const romanNumList: { [key: string]: number } = {
+    M: 1000,
+    CM: 900,
+    D: 500,
+    CD: 400,
+    C: 100,
+    XC: 90,
+    L: 50,
+    XV: 40,
+    X: 10,
+    IX: 9,
+    V: 5,
+    IV: 4,
+    I: 1
+  };
+  let a;
+  for (let key in romanNumList) {
+    a = Math.floor(num / romanNumList[key]);
+    if (a >= 0) {
+      for (let i = 0; i < a; i++) {
+        roman += key;
+      }
+    }
+    num = num % romanNumList[key];
+  }
+
+  return roman;
+};
+
+export default formatRoman;
+```
+
+자바스크립트를 이용해 로마숫자로 바꾸는 함수를 검색해서 가져오고 TypeScript에 맞게 조금 바꿔주었다. [(참조)](https://blog.usejournal.com/create-a-roman-numerals-converter-in-javascript-a82fda6b7a60)
+
+이제 `Expense`함수를 작성해주자.
+
+**src/components/Extense.tsx**
+
+```tsx
+import React from "react";
+import styled from "styled-components";
+import formatRoman from "../lib/formatRoman";
+import formatMoney from "../lib/formatMoney";
+
+const YellowTd = styled.td`
+  background: #ffff00;
+  color: #000000;
+  text-align: ${props => props.align};
+`;
+
+type ExpenseProps = {
+  index: number;
+  name: string;
+  price: number;
+  place: string;
+};
+
+export default function Expense({ index, name, price, place }: ExpenseProps) {
+  return (
+    <tr>
+      <YellowTd align="center">{formatRoman(index)}.</YellowTd>
+      <YellowTd align="left">{name}</YellowTd>
+      <YellowTd align="left">{formatMoney(price)}</YellowTd>
+      <YellowTd align="left">{place}</YellowTd>
+    </tr>
   );
 }
 ```
