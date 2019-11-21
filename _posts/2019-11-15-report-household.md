@@ -222,7 +222,7 @@ export default function Household({ children }: HouseholdProps) {
 **src/lib/formatDate.ts**
 
 ```ts
-const formatDate = (date: string) => {
+const formatDate = (date: string): string => {
   const year = date.substr(0, 4);
   const month = date.substr(4, 2);
   const day = date.substr(6, 2);
@@ -235,7 +235,7 @@ export default formatDate;
 **src/lib/formatMoney.ts**
 
 ```ts
-const formatMoney = (money: number) =>
+const formatMoney = (money: number): string =>
   money.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 export default formatMoney;
@@ -373,7 +373,7 @@ const formatRoman = (num: number): string => {
 export default formatRoman;
 ```
 
-자바스크립트를 이용해 로마숫자로 바꾸는 함수를 검색해서 가져오고 TypeScript에 맞게 조금 바꿔주었다. [(참조)](https://blog.usejournal.com/create-a-roman-numerals-converter-in-javascript-a82fda6b7a60)
+자바스크립트를 이용해 로마숫자로 바꾸는 함수를 검색해서 가져오고[(참조)](https://blog.usejournal.com/create-a-roman-numerals-converter-in-javascript-a82fda6b7a60) TypeScript에 맞게 조금 바꿔주었다.
 
 이제 `Expense`함수를 작성해주자.
 
@@ -409,3 +409,473 @@ export default function Expense({ index, name, price, place }: ExpenseProps) {
   );
 }
 ```
+
+## 작성한 컴포넌트들 App 컴포넌트에서 사용하기
+
+이제 열심히 만들어준 컴포넌트들을 `App`에서 뿌려보자.
+
+**src/App.tsx**
+
+```tsx
+import React from "react";
+import { data } from "./lib/data.json";
+
+// components
+import Household from "./components/Household";
+import Daily from "./components/Daily";
+import Expense from "./components/Expense";
+
+function App() {
+  return (
+    <div>
+      <Household>
+        {data.map((daily, idx) => (
+          <Daily
+            key={idx}
+            index={idx + 1}
+            date={daily.date}
+            income={daily.income}
+            total={daily.expenses.reduce((acc, cur) => acc + cur.price, 0)}
+          >
+            {daily.expenses.map((expense, idx) => (
+              <Expense
+                key={idx}
+                index={idx + 1}
+                name={expense.name}
+                price={expense.price}
+                place={expense.place}
+              ></Expense>
+            ))}
+          </Daily>
+        ))}
+      </Household>
+    </div>
+  );
+}
+
+export default App;
+```
+
+![view1](/assets/images/report-household-view1.png)
+
+이렇게 뷰가 나왔다! 하지만 아직 갈 길이 멀다.(~~못생겼다.~~)
+
+남은 할 일 목록
+
+1. 잔액 마이너스일 경우 빨간색으로 `[적자]` 표시
+2. 날짜별 구입처별 정렬
+3. `추가`, `삭제` 기능 추가
+4. `local storage` 연동
+5. ~~디자인 수정...?~~
+
+## 잔액 마이너스 표시
+
+이번 작업은 `Daily` 컴포넌트만 작업해주면 된다.
+
+styled components에 `minus`라는 `props`를 `boolean` 타입으로 전달하여 css 작업을 해줄 것이다.
+
+**src/components/Daily.tsx**
+
+```tsx
+(... 생략)
+
+const LimeTd = styled.td`
+  background: #bfff00;
+  color: ${props => (props.minus ? "#FF0000" : "#000000")};
+  text-align: ${props => props.align};
+`;
+
+(...생략)
+
+return (
+    <tbody>
+      <tr>
+        <IndexTd rowSpan={children.length + 5}>{index}</IndexTd>
+        <GreenTd align="center">날짜:{formatDate(date)}</GreenTd>
+        <GreenTd align="center">수입</GreenTd>
+        <GreenTd align="left" colSpan={2}>
+          {formatMoney(income)}
+        </GreenTd>
+      </tr>
+      <tr>
+        <GreenTd align="center">번호</GreenTd>
+        <GreenTd align="center">품목</GreenTd>
+        <GreenTd align="center">가격</GreenTd>
+        <GreenTd align="center">구입처</GreenTd>
+      </tr>
+      {children}
+      <tr>
+        <LimeTd align="center">개수</LimeTd>
+        <LimeTd align="left" colSpan={3}>
+          {children.length}
+        </LimeTd>
+      </tr>
+      <tr>
+        <LimeTd align="center">총지출</LimeTd>
+        <LimeTd align="left" colSpan={3}>
+          {formatMoney(total)}
+        </LimeTd>
+      </tr>
+      <tr>
+        <LimeTd align="center">잔액</LimeTd>
+        <LimeTd align="left" colSpan={3} minus={income < total}>
+          {income < total ? "[적자]" : null}
+          {formatMoney(income - total)}
+        </LimeTd>
+      </tr>
+    </tbody>
+  );
+
+(...생략)
+```
+
+이렇게 해주니 타입스크립트 에러가 난다.
+
+![minus-error](/assets/images/report-household-minus-error.png)
+
+`td`에는 `minus`라는 `props`를 줄 수 없다는 에러인듯 하다.
+
+**src/components/Daily.tsx**
+
+```tsx
+(...생략)
+
+type LimeTdPropsType = {
+  minus?: boolean;
+};
+
+const LimeTd = styled.td<LimeTdPropsType>`
+  background: #bfff00;
+  color: ${props => (props.minus ? "#FF0000" : "#000000")};
+  text-align: ${props => props.align};
+`;
+
+(...생략)
+```
+
+다음과 같이 타입을 정의해주고 `styled.td`에 `Generic`으로 부여해주면 에러가 사라진다.
+
+![view2](/assets/images/report-household-view2.png)
+
+원하는 대로 결과가 나왔다.
+
+## 날짜별, 구입처별 내림차순 정렬
+
+자바스크립트 내장 함수인 `sort`를 이용해 정렬을 해줄 것이다.
+
+정렬할 기준이 숫자였다면 아래와 같이 마이너스 연산을 해주면 된다.
+
+```js
+data.sort((a, b) => a.date - b.date);
+```
+
+날쩌와 구입처 모두 문자열이기 때문에 마이너스 연산이 되지 않는다. 하지만 비교 연산은 가능하기 때문에 이런 식으로 해주면 된다.
+
+```js
+data.sort((a, b) => {
+  if (a.date > b.date) return 1;
+  else if (b.date > a.date) return -1;
+  else return 0;
+});
+```
+
+**src/App.tsx**
+
+```tsx
+import React from "react";
+import { data } from "./lib/data.json";
+
+// components
+import Household from "./components/Household";
+import Daily from "./components/Daily";
+import Expense from "./components/Expense";
+
+function App() {
+  const sortedData = data
+    .sort((a, b) => {
+      // 날짜별 정렬
+      if (a.date > b.date) return 1;
+      else if (b.date > a.date) return -1;
+      else return 0;
+    })
+    .map(daily => {
+      const sortedExpenses = daily.expenses.sort((a, b) => {
+        // 구입처별 내림차순 정렬
+        if (a.place > b.place) return -1;
+        else if (b.place > a.place) return 1;
+        else return 0;
+      });
+      return {
+        ...daily,
+        expenses: sortedExpenses
+      };
+    });
+
+  return (
+    <div>
+      <Household>
+        {sortedData.map((daily, idx) => (
+          <Daily
+            key={idx}
+            index={idx + 1}
+            date={daily.date}
+            income={daily.income}
+            total={daily.expenses.reduce((acc, cur) => acc + cur.price, 0)}
+          >
+            {daily.expenses.map((expense, idx) => (
+              <Expense
+                key={idx}
+                index={idx + 1}
+                name={expense.name}
+                price={expense.price}
+                place={expense.place}
+              />
+            ))}
+          </Daily>
+        ))}
+      </Household>
+    </div>
+  );
+}
+
+export default App;
+```
+
+![view2](/assets/images/report-household-view3.png)
+
+원하는 대로 정렬이 되었다.
+
+## 추가 기능 만들기
+
+오른쪽 화면에 추가 폼을 만들 것이다. 난 디자인 감각이 부족하니 [material-ui](https://material-ui.com/)를 써주도록 하자.
+
+먼저 설치를 해줘야한다.
+
+```bash
+yarn add @material-ui/core
+
+yarn add @material-ui/pickers
+yarn add @date-io/date-fns
+yarn add date-fns@next
+yarn add date-fns
+```
+
+아래쪽 네개는 날짜를 선택하는 폼을 위해 설치해주었다.
+
+이제 Form 컴포넌트를 생성해보자.
+
+**src/components/Form.tsx**
+
+```tsx
+import React, { useState } from "react";
+import DateFnsUtils from "@date-io/date-fns";
+import koLocale from "date-fns/locale/ko";
+import {
+  MuiPickersUtilsProvider,
+  KeyboardDatePicker
+} from "@material-ui/pickers";
+import { TextField, InputAdornment, Button } from "@material-ui/core";
+import { createStyles, makeStyles, Theme } from "@material-ui/core/styles";
+import styled from "styled-components";
+
+const Wrapper = styled.div`
+  flex: 1;
+  text-align: center;
+`;
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    textField: {
+      maxWidth: 300
+    },
+    button: {
+      marginTop: theme.spacing(3),
+      maxWidth: 300
+    }
+  })
+);
+
+type Data = {
+  date: string;
+  income: number;
+  expenses: {
+    name: string;
+    price: number;
+    place: string;
+  }[];
+}[];
+
+type FormProps = {
+  data: Data;
+  setData: (data: Data) => void;
+};
+
+export default function Form({ data, setData }: FormProps) {
+  const [date, setDate] = useState<Date | null>(new Date());
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [place, setPlace] = useState("");
+  const classes = useStyles();
+
+  const handleAdd = (): void => {
+    if (!date) {
+      // 오류
+      return;
+    }
+    if (isNaN(Number(price))) {
+      // 오류
+      return;
+    }
+
+    const year = date.getFullYear().toString();
+    const month = String(date.getMonth() + 1);
+    const day = date.getDate().toString();
+
+    const strDate =
+      year + (month[1] ? month : "0" + month) + (day[1] ? day : "0" + day);
+
+    const selectDataIndex = data.findIndex(daily => daily.date === strDate);
+
+    if (selectDataIndex === -1) {
+      setData([
+        ...data,
+        {
+          date: strDate,
+          income: 0,
+          expenses: [
+            {
+              name,
+              price: Number(price),
+              place
+            }
+          ]
+        }
+      ]);
+    } else {
+      const filteredData = data.filter(daily => daily.date !== strDate);
+      const selectData = data[selectDataIndex];
+      selectData.expenses.push({ name, price: Number(price), place });
+      setData([...filteredData, selectData]);
+    }
+
+    console.log(data);
+    console.log(strDate);
+  };
+
+  return (
+    <Wrapper>
+      <MuiPickersUtilsProvider utils={DateFnsUtils} locale={koLocale}>
+        <KeyboardDatePicker
+          autoOk
+          variant="inline"
+          inputVariant="outlined"
+          margin="normal"
+          fullWidth
+          className={classes.textField}
+          format="yyyy/MM/dd"
+          label="날짜"
+          value={date}
+          onChange={(date: Date | null) => setDate(date)}
+        />
+      </MuiPickersUtilsProvider>
+      <br />
+      <TextField
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        className={classes.textField}
+        label="품목"
+        value={name}
+        onChange={e => setName(e.target.value)}
+      />
+      <br />
+      <TextField
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        className={classes.textField}
+        label="가격"
+        value={price}
+        onChange={e => setPrice(e.target.value)}
+        InputProps={{
+          endAdornment: <InputAdornment position="end">원</InputAdornment>
+        }}
+      />
+      <br />
+      <TextField
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        className={classes.textField}
+        label="구입처"
+        value={place}
+        onChange={e => setPlace(e.target.value)}
+      />
+      <br />
+      <Button
+        onClick={() => handleAdd()}
+        variant="contained"
+        color="primary"
+        fullWidth
+        className={classes.button}
+      >
+        추가
+      </Button>
+    </Wrapper>
+  );
+}
+```
+
+어쩌다보니 코드가 굉장히 길고 지저분해졌다...😱
+
+그리고 화면을 반반 나누기 위해 약간의 css작업을 해주었다.
+
+**src/App.tsx**
+
+```tsx
+(...생략)
+const Container = styled.div`
+  display: flex;
+`;
+(...생략)
+```
+
+App 컴포넌트를 `Container`로 감싸주고
+
+**src/Household.tsx**
+
+```tsx
+import React from "react";
+import styled from "styled-components";
+
+const Wrapper = styled.div`
+  flex: 1;
+`;
+
+const HouseholdTable = styled.table`
+  width: 100%;
+`;
+
+type HouseholdProps = {
+  children: JSX.Element[];
+};
+
+export default function Household({ children }: HouseholdProps) {
+  return (
+    <Wrapper>
+      <HouseholdTable>
+        <caption>가계부</caption>
+        {children}
+      </HouseholdTable>
+    </Wrapper>
+  );
+}
+```
+
+`Household`와 `Form`의 Wrapper에 `flex: 1` 속성을 주면 화면이 반반 꽉 차게 나온다.
+
+> 여기서 1은 비율이다. (1:1)
+
+![view4](/assets/images/report-household-view4.png)
+
+오늘 날짜로 항목을 하나 추가해보았다. 아주 잘 나온다!
