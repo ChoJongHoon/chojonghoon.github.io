@@ -879,3 +879,929 @@ export default function Household({ children }: HouseholdProps) {
 ![view4](/assets/images/report-household-view4.png)
 
 오늘 날짜로 항목을 하나 추가해보았다. 아주 잘 나온다!
+
+## 삭제 기능 만들기
+
+추가를 만들었으니 당연히 삭제도 만들어야겠지.
+
+삭제 기능을 추가하려니 발견한건데 `data`에 `id`가 없다?!
+
+귀찮지만 `data.json`에 `id`를 부여하고 코드를 조금 수정해주자.
+
+**src/lib/data.json**
+
+```json
+{
+  "data": [
+    {
+      "date": "20191202",
+      "income": 200000,
+      "expenses": [
+        {
+          "id": 1,
+          "name": "볼펜",
+          "price": 1000,
+          "place": "인하문구"
+        },
+        {
+          "id": 2,
+          "name": "시계",
+          "price": 100000,
+          "place": "인하금방"
+        },
+        {
+          "id": 3,
+          "name": "책",
+          "price": 10000,
+          "place": "공룡서점"
+        },
+        {
+          "id": 4,
+          "name": "노트",
+          "price": 10000,
+          "place": "인하문구"
+        }
+      ]
+    },
+    {
+      "date": "20191201",
+      "income": 300000,
+      "expenses": [
+        {
+          "id": 5,
+          "name": "우유",
+          "price": 6000,
+          "place": "인하슈퍼"
+        },
+        {
+          "id": 6,
+          "name": "과자",
+          "price": 10000,
+          "place": "인하슈퍼"
+        },
+        {
+          "id": 7,
+          "name": "콜라",
+          "price": 1500,
+          "place": "인하슈퍼"
+        }
+      ]
+    },
+
+    {
+      "date": "20191203",
+      "income": 2000000,
+      "expenses": [
+        {
+          "id": 8,
+          "name": "인형",
+          "price": 10000,
+          "place": "인하슈퍼"
+        },
+        {
+          "id": 9,
+          "name": "껌",
+          "price": 100,
+          "place": "인하슈퍼"
+        },
+        {
+          "id": 10,
+          "name": "CD",
+          "price": 5000,
+          "place": "신나라레코드"
+        },
+        {
+          "id": 11,
+          "name": "모니터",
+          "price": 105000,
+          "place": "컴퓨터세상"
+        },
+        {
+          "id": 12,
+          "name": "빵",
+          "price": 1000,
+          "place": "빵시장"
+        },
+        {
+          "id": 13,
+          "name": "콩나물",
+          "price": 1000,
+          "place": "동네슈퍼"
+        },
+        {
+          "id": 14,
+          "name": "컴퓨터",
+          "price": 2000000,
+          "place": "컴퓨터세상"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**src/App.tsx**
+
+```tsx
+import React, { useState } from "react";
+import { data as initialData } from "./lib/data.json";
+import styled from "styled-components";
+
+// components
+import Household from "./components/Household";
+import Daily from "./components/Daily";
+import Expense from "./components/Expense";
+import Form from "./components/Form";
+
+const Container = styled.div`
+  display: flex;
+`;
+
+function App() {
+  const [data, setData] = useState(initialData);
+
+  const sortedData = data
+    .sort((a, b) => {
+      // 날짜별 정렬
+      if (a.date > b.date) return 1;
+      else if (b.date > a.date) return -1;
+      else return 0;
+    })
+    .map(daily => {
+      const sortedExpenses = daily.expenses.sort((a, b) => {
+        // 구입처별 내림차순 정렬
+        if (a.place > b.place) return -1;
+        else if (b.place > a.place) return 1;
+        else return 0;
+      });
+      return {
+        ...daily,
+        expenses: sortedExpenses
+      };
+    });
+
+  return (
+    <Container>
+      <Household>
+        {sortedData.map((daily, idx) => (
+          <Daily
+            key={idx}
+            index={idx + 1}
+            date={daily.date}
+            income={daily.income}
+            total={daily.expenses.reduce((acc, cur) => acc + cur.price, 0)}
+          >
+            {daily.expenses.map((expense, idx) => (
+              <Expense
+                key={idx}
+                id={expense.id}
+                index={idx + 1}
+                name={expense.name}
+                price={expense.price}
+                place={expense.place}
+              />
+            ))}
+          </Daily>
+        ))}
+      </Household>
+      <Form data={data} setData={setData} />
+    </Container>
+  );
+}
+
+export default App;
+```
+
+**src/components/Expense.tsx**
+
+```tsx
+import React from "react";
+import styled from "styled-components";
+import formatRoman from "../lib/formatRoman";
+import formatMoney from "../lib/formatMoney";
+
+const YellowTd = styled.td`
+  background: #ffff00;
+  color: #000000;
+  text-align: ${props => props.align};
+`;
+
+type ExpenseProps = {
+  id: number;
+  index: number;
+  name: string;
+  price: number;
+  place: string;
+};
+
+export default function Expense({
+  id,
+  index,
+  name,
+  price,
+  place
+}: ExpenseProps) {
+  return (
+    <tr>
+      <YellowTd align="center">{formatRoman(index)}.</YellowTd>
+      <YellowTd align="left">{name}</YellowTd>
+      <YellowTd align="left">{formatMoney(price)}</YellowTd>
+      <YellowTd align="left">{place}</YellowTd>
+    </tr>
+  );
+}
+```
+
+`Form.tsx`에서 추가할 때 `id`도 같이 추가해주어야 한다. `id`중 max값을 뽑아 `+1` 해준다.
+
+**src/components/Form.tsx**
+
+```tsx
+(...생략)
+const maxId = data.reduce((acc, daily) => {
+  const maxDailyId = daily.expenses.reduce(
+    (acc, expense) => (expense.id > acc ? expense.id : acc),
+    0
+  );
+  return acc > maxDailyId ? acc : maxDailyId;
+}, 0);
+
+if (selectDataIndex === -1) {
+  setData([
+    ...data,
+    {
+      date: strDate,
+      income: 0,
+      expenses: [
+        {
+          id: maxId + 1,
+          name,
+          price: Number(price),
+          place
+        }
+      ]
+    }
+  ]);
+} else {
+  const filteredData = data.filter(daily => daily.date !== strDate);
+  const selectData = data[selectDataIndex];
+  selectData.expenses.push({
+    id: maxId + 1,
+    name,
+    price: Number(price),
+    place
+  });
+  setData([...filteredData, selectData]);
+}
+(...생략)
+```
+
+이제 본격적으로 삭제 기능을 구현해보자.
+
+지출 품목 행에 마우스를 올리면 <span style="color: red">&times;</span> 버튼이 나와야한다.
+
+그리고 이 버튼을 누르면 삭제되어야한다.
+
+**src/components/Expense.tsx**
+
+```tsx
+import React from "react";
+import styled from "styled-components";
+import formatRoman from "../lib/formatRoman";
+import formatMoney from "../lib/formatMoney";
+
+const Wrapper = styled.tr``;
+
+const RemoveButton = styled.div`
+  color: #ff0000;
+  float: right;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  display: none;
+  ${Wrapper}:hover & {
+    display: block;
+  }
+`;
+
+const YellowTd = styled.td`
+  background: #ffff00;
+  color: #000000;
+  text-align: ${props => props.align};
+`;
+
+type ExpenseProps = {
+  id: number;
+  index: number;
+  name: string;
+  price: number;
+  place: string;
+  onRemove: (id: number) => void;
+};
+
+export default function Expense({
+  id,
+  index,
+  name,
+  price,
+  place,
+  onRemove
+}: ExpenseProps) {
+  return (
+    <Wrapper>
+      <YellowTd align="center">{formatRoman(index)}.</YellowTd>
+      <YellowTd align="left">{name}</YellowTd>
+      <YellowTd align="left">{formatMoney(price)}</YellowTd>
+      <YellowTd align="left">
+        {place}
+        <RemoveButton onClick={() => onRemove(id)}>&times;</RemoveButton>
+      </YellowTd>
+    </Wrapper>
+  );
+}
+```
+
+`onRemove`를 받아서 버튼에 걸어줬는데 이 함수는 `App.tsx`에서 만들거다.
+
+**src/App.tsx**
+
+```tsx
+(...생략)
+
+const handleRemove = (id: number): void => {
+    const removedData = data.map(daily => {
+      return {
+        ...daily,
+        expenses: daily.expenses.filter(expense => expense.id !== id)
+      };
+    });
+    setData(removedData);
+  };
+
+(...생략)
+
+<Expense
+  key={idx}
+  id={expense.id}
+  index={idx + 1}
+  name={expense.name}
+  price={expense.price}
+  place={expense.place}
+  onRemove={handleRemove}
+/>
+
+(...생략)
+```
+
+![view5](/assets/images/report-household-view5.gif)
+
+이렇게 삭제 기능을 구현했다! 👏👏👏 (~~컴퓨터만 안사면 적자날 일 없다.~~)
+
+## 수입 수정하기 기능 만들기
+
+이제 만들 기능은 수입을 수정하는 기능이다.
+
+계획에는 없었는데 추가 기능 만들 때 아직 작성되지 않은 날짜에 추가하면 수입을 따로 주기가 애매해서 그냥 0원으로 만들고 수정하기 기능을 만들어야겠다 생각했다.
+
+삭제 버튼과 마찬가지로 수입 금액란에 마우스를 올리면 수정 버튼이 나오게 할 것 이다. 수정 버튼은 `material-icon`에서 가져다 썼다.
+
+```bash
+$ yarn add @material-ui/icon
+```
+
+먼저 `@material-ui/icon`를 설치해주고 [material.io](https://material.io/resources/icons/)에 가서 마음에 드는 아이콘을 찾아준다.
+
+나는 `edit`라는 연필 모양 아이콘을 선택했다.
+
+**src/components/Daily.tsx**
+
+```tsx
+import React, { useState } from "react";
+import styled from "styled-components";
+import formatDate from "../lib/formatDate";
+import formatMoney from "../lib/formatMoney";
+import EditIcon from "@material-ui/icons/Edit";
+
+const IndexTd = styled.td`
+  background: #0000ff;
+  color: #ffffff;
+  text-align: center;
+`;
+
+const ModifyButton = styled.div`
+  font-size: 1rem;
+  float: right;
+  display: none;
+  cursor: pointer;
+`;
+
+const GreenTd = styled.td`
+  background: #00ff00;
+  color: #000000;
+  text-align: ${props => props.align};
+  :hover ${ModifyButton} {
+    display: block;
+  }
+`;
+
+type LimeTdPropsType = {
+  minus?: boolean;
+};
+
+const LimeTd = styled.td<LimeTdPropsType>`
+  background: #a3dd08;
+  color: ${props => (props.minus ? "#FF0000" : "#000000")};
+  text-align: ${props => props.align};
+`;
+
+const IncomeTextField = styled.input`
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 1rem;
+`;
+
+type DailyProps = {
+  index: number;
+  date: string;
+  income: number;
+  total: number;
+  children: JSX.Element[];
+  modify: boolean;
+  setModify: (modify: number) => void;
+  onModify: (index: number, income: number) => void;
+};
+
+export default function Daily({
+  index,
+  date,
+  income,
+  total,
+  children,
+  modify,
+  setModify,
+  onModify
+}: DailyProps) {
+  const [incomeValue, setIncomeValue] = useState(String(income));
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      e.keyCode === 69 ||
+      e.keyCode === 190 ||
+      e.keyCode === 109 ||
+      e.keyCode === 189
+    ) {
+      e.preventDefault();
+    }
+    if (e.key === "Enter") {
+      onModify(index, Number(incomeValue));
+      setModify(0);
+    }
+  };
+  return (
+    <tbody>
+      <tr>
+        <IndexTd rowSpan={children.length + 5}>{index}</IndexTd>
+        <GreenTd align="center">날짜:{formatDate(date)}</GreenTd>
+        <GreenTd align="center">수입</GreenTd>
+        <GreenTd align="left" colSpan={2}>
+          {modify ? (
+            <IncomeTextField
+              value={incomeValue}
+              type="number"
+              onChange={e => setIncomeValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+          ) : (
+            <>
+              {formatMoney(income)}{" "}
+              <ModifyButton onClick={() => setModify(index)}>
+                <EditIcon style={{ fontSize: 14 }} />
+              </ModifyButton>
+            </>
+          )}
+        </GreenTd>
+      </tr>
+      <tr>
+        <GreenTd align="center">번호</GreenTd>
+        <GreenTd align="center">품목</GreenTd>
+        <GreenTd align="center">가격</GreenTd>
+        <GreenTd align="center">구입처</GreenTd>
+      </tr>
+      {children}
+      <tr>
+        <LimeTd align="center">개수</LimeTd>
+        <LimeTd align="left" colSpan={3}>
+          {children.length}
+        </LimeTd>
+      </tr>
+      <tr>
+        <LimeTd align="center">총지출</LimeTd>
+        <LimeTd align="left" colSpan={3}>
+          {formatMoney(total)}
+        </LimeTd>
+      </tr>
+      <tr>
+        <LimeTd align="center">잔액</LimeTd>
+        <LimeTd align="left" colSpan={3} minus={income < total}>
+          {income < total ? "[적자]" : null}
+          {formatMoney(income - total)}
+        </LimeTd>
+      </tr>
+    </tbody>
+  );
+}
+```
+
+`App`에서 `modify`, `setModify`, `onModify` 이렇게 세 `props`를 추가로 받아서 사용하였다. 이 부분은 이제 `App`으로 가서 추가해주자.
+
+```tsx
+import React, { useState } from "react";
+import { data as initialData } from "./lib/data.json";
+import styled from "styled-components";
+
+// components
+import Household from "./components/Household";
+import Daily from "./components/Daily";
+import Expense from "./components/Expense";
+import Form from "./components/Form";
+
+const Container = styled.div`
+  display: flex;
+`;
+
+function App() {
+  const [data, setData] = useState(initialData);
+  const [modify, setModify] = useState();
+
+  const sortedData = data
+    .sort((a, b) => {
+      // 날짜별 정렬
+      if (a.date > b.date) return 1;
+      else if (b.date > a.date) return -1;
+      else return 0;
+    })
+    .map(daily => {
+      const sortedExpenses = daily.expenses.sort((a, b) => {
+        // 구입처별 내림차순 정렬
+        if (a.place > b.place) return -1;
+        else if (b.place > a.place) return 1;
+        else return 0;
+      });
+      return {
+        ...daily,
+        expenses: sortedExpenses
+      };
+    });
+
+  const handleRemove = (id: number): void => {
+    const removedData = data.map(daily => {
+      return {
+        ...daily,
+        expenses: daily.expenses.filter(expense => expense.id !== id)
+      };
+    });
+    setData(removedData);
+  };
+
+  const handleModify = (index: number, income: number): void => {
+    const modifiedData = data.map((daily, idx) =>
+      idx !== index - 1
+        ? daily
+        : {
+            ...daily,
+            income
+          }
+    );
+    setData(modifiedData);
+  };
+
+  return (
+    <Container>
+      <Household>
+        {sortedData.map((daily, idx) => (
+          <Daily
+            key={idx}
+            index={idx + 1}
+            date={daily.date}
+            income={daily.income}
+            total={daily.expenses.reduce((acc, cur) => acc + cur.price, 0)}
+            modify={modify === idx + 1}
+            setModify={setModify}
+            onModify={handleModify}
+          >
+            {daily.expenses.map((expense, idx) => (
+              <Expense
+                key={idx}
+                id={expense.id}
+                index={idx + 1}
+                name={expense.name}
+                price={expense.price}
+                place={expense.place}
+                onRemove={handleRemove}
+              />
+            ))}
+          </Daily>
+        ))}
+      </Household>
+      <Form data={data} setData={setData} />
+    </Container>
+  );
+}
+
+export default App;
+```
+
+이렇게 `handleModify`함수를 만들어 수정하기 기능을 완성하였다.
+
+![view6](/assets/images/report-household-view6.gif)
+
+결과가 만족스럽게 나온다. (~~수입이 진짜 저러면 진짜 만족스럽겠다.~~)
+
+## Local Storage 사용하기
+
+아직은 새로고침하면 변경된 데이터들이 모두 초기화된다. 서버가 있으면 좋겠지만 서버가 없는 페이지니 로컬 스토리지를 이용하여 브라우저에 저장해주겠다.
+
+`local storage`에 `data`가 존재하면 로컬 스토리지의 `data`로 존재하지 않으면 `data.json`에서 가져온 `data`(기본 값)로 시작할 수 있게 해준다.
+
+그리고 `data`의 추가, 삭제, 수정이 있을 때마다 `local storage`에 저장해준다.
+
+**src/App.tsx**
+
+```tsx
+import React, { useState } from "react";
+import { data as initialData } from "./lib/data.json";
+import styled from "styled-components";
+
+// components
+import Household from "./components/Household";
+import Daily from "./components/Daily";
+import Expense from "./components/Expense";
+import Form from "./components/Form";
+
+const Container = styled.div`
+  display: flex;
+`;
+
+function App() {
+  const localData = localStorage.getItem("data");
+  type dataType = {
+    date: string;
+    income: number;
+    expenses: {
+      id: number;
+      name: string;
+      price: number;
+      place: string;
+    }[];
+  }[];
+  const getData: dataType = localData ? JSON.parse(localData) : initialData;
+  const [data, setData] = useState(getData);
+  const [modify, setModify] = useState();
+
+  const sortedData = data
+    .sort((a, b) => {
+      // 날짜별 정렬
+      if (a.date > b.date) return 1;
+      else if (b.date > a.date) return -1;
+      else return 0;
+    })
+    .map(daily => {
+      const sortedExpenses = daily.expenses.sort((a, b) => {
+        // 구입처별 내림차순 정렬
+        if (a.place > b.place) return -1;
+        else if (b.place > a.place) return 1;
+        else return 0;
+      });
+      return {
+        ...daily,
+        expenses: sortedExpenses
+      };
+    });
+
+  const handleRemove = (id: number): void => {
+    const removedData = data.map(daily => {
+      return {
+        ...daily,
+        expenses: daily.expenses.filter(expense => expense.id !== id)
+      };
+    });
+    localStorage.setItem("data", JSON.stringify(removedData));
+    setData(removedData);
+  };
+
+  const handleModify = (index: number, income: number): void => {
+    const modifiedData = data.map((daily, idx) =>
+      idx !== index - 1
+        ? daily
+        : {
+            ...daily,
+            income
+          }
+    );
+    localStorage.setItem("data", JSON.stringify(modifiedData));
+    setData(modifiedData);
+  };
+
+  return (
+    <Container>
+      <Household>
+        {sortedData.map((daily, idx) => (
+          <Daily
+            key={idx}
+            index={idx + 1}
+            date={daily.date}
+            income={daily.income}
+            total={daily.expenses.reduce((acc, cur) => acc + cur.price, 0)}
+            modify={modify === idx + 1}
+            setModify={setModify}
+            onModify={handleModify}
+          >
+            {daily.expenses.map((expense, idx) => (
+              <Expense
+                key={idx}
+                id={expense.id}
+                index={idx + 1}
+                name={expense.name}
+                price={expense.price}
+                place={expense.place}
+                onRemove={handleRemove}
+              />
+            ))}
+          </Daily>
+        ))}
+      </Household>
+      <Form data={data} setData={setData} />
+    </Container>
+  );
+}
+
+export default App;
+```
+
+**src/components/Daily.tsx**
+
+```tsx
+import React, { useState } from "react";
+import styled from "styled-components";
+import formatDate from "../lib/formatDate";
+import formatMoney from "../lib/formatMoney";
+import EditIcon from "@material-ui/icons/Edit";
+
+const IndexTd = styled.td`
+  background: #0000ff;
+  color: #ffffff;
+  text-align: center;
+`;
+
+const ModifyButton = styled.div`
+  font-size: 1rem;
+  float: right;
+  display: none;
+  cursor: pointer;
+`;
+
+const GreenTd = styled.td`
+  background: #00ff00;
+  color: #000000;
+  text-align: ${props => props.align};
+  :hover ${ModifyButton} {
+    display: block;
+  }
+`;
+
+type LimeTdPropsType = {
+  minus?: boolean;
+};
+
+const LimeTd = styled.td<LimeTdPropsType>`
+  background: #a3dd08;
+  color: ${props => (props.minus ? "#FF0000" : "#000000")};
+  text-align: ${props => props.align};
+`;
+
+const IncomeTextField = styled.input`
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 1rem;
+`;
+
+type DailyProps = {
+  index: number;
+  date: string;
+  income: number;
+  total: number;
+  children: JSX.Element[];
+  modify: boolean;
+  setModify: (modify: number) => void;
+  onModify: (index: number, income: number) => void;
+};
+
+export default function Daily({
+  index,
+  date,
+  income,
+  total,
+  children,
+  modify,
+  setModify,
+  onModify
+}: DailyProps) {
+  const [incomeValue, setIncomeValue] = useState(String(income));
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      e.keyCode === 69 ||
+      e.keyCode === 190 ||
+      e.keyCode === 109 ||
+      e.keyCode === 189
+    ) {
+      e.preventDefault();
+    }
+    if (e.key === "Enter") {
+      onModify(index, Number(incomeValue));
+      setModify(0);
+    }
+  };
+  return (
+    <tbody>
+      <tr>
+        <IndexTd rowSpan={children.length + 5}>{index}</IndexTd>
+        <GreenTd align="center">날짜:{formatDate(date)}</GreenTd>
+        <GreenTd align="center">수입</GreenTd>
+        <GreenTd align="left" colSpan={2}>
+          {modify ? (
+            <IncomeTextField
+              value={incomeValue}
+              type="number"
+              onChange={e => setIncomeValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+          ) : (
+            <>
+              {formatMoney(income)}
+              <ModifyButton
+                onClick={() => {
+                  setIncomeValue(String(income));
+                  setModify(index);
+                }}
+              >
+                <EditIcon style={{ fontSize: 14 }} />
+              </ModifyButton>
+            </>
+          )}
+        </GreenTd>
+      </tr>
+      <tr>
+        <GreenTd align="center">번호</GreenTd>
+        <GreenTd align="center">품목</GreenTd>
+        <GreenTd align="center">가격</GreenTd>
+        <GreenTd align="center">구입처</GreenTd>
+      </tr>
+      {children}
+      <tr>
+        <LimeTd align="center">개수</LimeTd>
+        <LimeTd align="left" colSpan={3}>
+          {children.length}
+        </LimeTd>
+      </tr>
+      <tr>
+        <LimeTd align="center">총지출</LimeTd>
+        <LimeTd align="left" colSpan={3}>
+          {formatMoney(total)}
+        </LimeTd>
+      </tr>
+      <tr>
+        <LimeTd align="center">잔액</LimeTd>
+        <LimeTd align="left" colSpan={3} minus={income < total}>
+          {income < total ? "[적자]" : null}
+          {formatMoney(income - total)}
+        </LimeTd>
+      </tr>
+    </tbody>
+  );
+}
+```
+
+이제 데이터를 추가, 삭제, 수정을 하고 새로고침을 해도 데이터가 유지된다!
+
+![view7](/assets/images/report-household-view7.gif)
+
+# 후기
+
+이렇게 나의 블로그 첫 글과 과제를 마쳤다. 확실히 프로젝트를 글을 쓰며 같이 진행하니 진행 속도가 체감 3배는 늦어지는 듯 했다. 계획한 기능을 모두 문제없이 구현하기는 했지만 아쉬운 점이 상당히 많다.
+
+## 아쉬운 점
+
+1. 깔끔하지 않은 코드
+2. 그러다보니
+3. 적절하지 않은 깃 커밋 타이밍과 커밋 메시지
+4. 블로그에 글보다 코드만 너무 많아진 점
+5. 더딘 개발 속도
+
+## 링크
+
+깃허브 주소: https://github.com/ChoJongHoon/household
+
+데모 페이지: https://chojonghoon.github.io/household
